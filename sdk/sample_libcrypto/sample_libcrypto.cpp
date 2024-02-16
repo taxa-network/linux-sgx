@@ -39,7 +39,7 @@
 * If you have still not decided on whether you should use this library in a
 * released product, please refer to the implementation of __do_get_rand32.
 **/
-
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -126,6 +126,37 @@ static inline IppStatus check_copy_size(size_t target_size, size_t source_size)
     if(target_size < source_size)
         return ippStsSizeErr;
     return ippStsNoErr;
+}
+
+void DumpHex(const void* data, size_t size) {
+   char ascii[17] = {0};
+   size_t i = 0, j = 0;
+   ascii[16] = '\0';
+   for (i = 0; i < size; ++i) {
+      printf("%02X ", ((unsigned char*)data)[i]);
+      if (((unsigned char*)data)[i] >= ' ' && ((unsigned char*)data)[i] <= '~') {
+         ascii[i % 16] = ((unsigned char*)data)[i];
+      } else {
+         ascii[i % 16] = '.';
+      }
+
+      if ((i+1) % 8 == 0 || i+1 == size) {
+         printf(" ");
+         if ((i+1) % 16 == 0) {
+            printf("|  %s \n", ascii);
+         } else if (i+1 == size) {
+            ascii[(i+1) % 16] = '\0';
+            if ((i+1) % 16 <= 8) {
+               printf(" ");
+            }
+
+            for (j = (i+1) % 16; j < 16; ++j) {
+               printf("   ");
+            }
+            printf("|  %s \n", ascii);
+         }
+      }
+   }
 }
 
 /* The function should generate a random number properly, and the pseudo-rand
@@ -623,14 +654,26 @@ sample_status_t sample_ecc256_compute_shared_dhkey(sample_ec256_private_t *p_pri
     int                 ecPointSize = 0;
     IppsECCPState* p_ecc_state = (IppsECCPState*)ecc_handle;
     IppECResult ipp_result = ippECValid;
+    int loopCount = 0;
 
     do
     {
+	loopCount = loopCount + 1;    
+        printf("this is loop %d\n", loopCount);
         ipp_ret = sgx_ipp_newBN((Ipp32u*)p_private_b->r, sizeof(sample_ec256_private_t), &BN_dh_privB);
-        ERROR_BREAK(ipp_ret);
+        printf("---Print private key----\n");
+	DumpHex((void*)p_private_b->r, sizeof(sample_ec256_private_t));
+	printf("\n----End print private key------\n");
+	ERROR_BREAK(ipp_ret);
         ipp_ret = sgx_ipp_newBN((uint32_t*)p_public_ga->gx, sizeof(p_public_ga->gx), &pubA_gx);
-        ERROR_BREAK(ipp_ret);
+        printf("---Print ga gx ----\n");
+        DumpHex((void*)p_public_ga->gx, sizeof(p_public_ga->gx));
+        printf("\n----End print ga gx------\n");        
+	ERROR_BREAK(ipp_ret);
         ipp_ret = sgx_ipp_newBN((uint32_t*)p_public_ga->gy, sizeof(p_public_ga->gy), &pubA_gy);
+        printf("---Print ga gy ----\n");
+        DumpHex((void*)p_public_ga->gy, sizeof(p_public_ga->gy));
+        printf("\n----End print ga gy------\n");  	
         ERROR_BREAK(ipp_ret);
         ipp_ret = ippsECCPPointGetSize(256, &ecPointSize);
         ERROR_BREAK(ipp_ret);
@@ -667,6 +710,9 @@ sample_status_t sample_ecc256_compute_shared_dhkey(sample_ec256_private_t *p_pri
         ipp_ret = check_copy_size(sizeof(p_shared_key->s), ROUND_TO(length, 8)/8);
         ERROR_BREAK(ipp_ret);
         memcpy(p_shared_key->s, pdata, ROUND_TO(length, 8)/8);
+        printf("---Print shared kay ----\n");
+        DumpHex((void*)p_shared_key->s, ROUND_TO(length, 8)/8);
+        printf("\n----End shared key------\n");  	
     }while(0);
 
     // Clear temp buffer before free.
